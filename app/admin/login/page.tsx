@@ -7,8 +7,8 @@ import { ShieldCheck, ArrowRight } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@motionpulse.local");
-  const [password, setPassword] = useState("motionpulse-demo");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,19 +112,6 @@ export default function AdminLoginPage() {
             {!isLoading && <ArrowRight className="w-3.5 h-3.5" />}
           </button>
         </form>
-
-        {/* Development Auth Notice */}
-        <div className="mt-8 p-3.5 rounded bg-surface/80 border border-surface-border text-center">
-          <div className="flex items-center justify-center space-x-1.5 text-champagne mb-1">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span className="text-[10px] uppercase tracking-widest font-semibold">
-              Development Authentication
-            </span>
-          </div>
-          <p className="text-[11px] text-text-muted font-mono">
-            admin@motionpulse.local · motionpulse-demo
-          </p>
-        </div>
       </div>
 
       {/* Footer */}

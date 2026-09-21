@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Invalid credentials. For development, use admin@motionpulse.local" },
+      { error: "Invalid credentials." },
       { status: 401 }
     );
   } catch (err) {
