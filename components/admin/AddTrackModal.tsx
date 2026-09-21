@@ -32,7 +32,8 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
   const [project, setProject] = useState("");
   const [description, setDescription] = useState("");
   const [selectedArtwork, setSelectedArtwork] = useState("/artwork/sample-01.svg");
-  const [customArtworkFile, setCustomArtworkFile] = useState<File | null>(null);
+  const [customArtworkName, setCustomArtworkName] = useState<string | null>(null);
+  const [customArtworkDataUrl, setCustomArtworkDataUrl] = useState<string | null>(null);
 
   // Google Drive Audio Link state
   const [googleDriveUrl, setGoogleDriveUrl] = useState("");
@@ -67,6 +68,17 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
     return !isNaN(num) && num > 0 ? Math.round(num) : 180;
   };
 
+  const handleCustomArtFile = (file: File) => {
+    setCustomArtworkName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCustomArtworkDataUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !artist.trim()) {
@@ -84,65 +96,33 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
 
     try {
       const finalDuration = parseDuration(durationInput);
+      const finalArtwork = customArtworkDataUrl || selectedArtwork;
 
-      if (customArtworkFile) {
-        // Use FormData if custom image file is selected
-        const formData = new FormData();
-        formData.append("title", title.trim());
-        formData.append("artist", artist.trim());
-        if (composer.trim()) formData.append("composer", composer.trim());
-        if (project.trim()) formData.append("project", project.trim());
-        if (description.trim()) formData.append("description", description.trim());
-        formData.append("artwork", selectedArtwork);
-        formData.append("customArtwork", customArtworkFile);
-        formData.append("googleDriveUrl", googleDriveUrl.trim());
-        formData.append("duration", finalDuration.toString());
-        if (hasPassword && password.trim()) formData.append("password", password.trim());
-        formData.append("expiryOption", expiryOption);
-        if (expiryOption === "custom" && customExpiry) {
-          formData.append("customExpiry", customExpiry);
-        }
+      const res = await fetch("/api/tracks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          artist: artist.trim(),
+          composer: composer.trim() || undefined,
+          project: project.trim() || undefined,
+          description: description.trim() || undefined,
+          artwork: finalArtwork,
+          googleDriveUrl: googleDriveUrl.trim(),
+          duration: finalDuration,
+          password: hasPassword && password.trim() ? password.trim() : undefined,
+          expiryOption,
+          customExpiry: expiryOption === "custom" ? customExpiry : undefined,
+        }),
+      });
 
-        const res = await fetch("/api/tracks", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setStatusMsg("Complete!");
-          onSuccess(data.track, data.link);
-          onClose();
-        } else {
-          setError(data.error || "Failed to create private listening link.");
-        }
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMsg("Complete!");
+        onSuccess(data.track, data.link);
+        onClose();
       } else {
-        // Standard JSON payload
-        const res = await fetch("/api/tracks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: title.trim(),
-            artist: artist.trim(),
-            composer: composer.trim() || undefined,
-            project: project.trim() || undefined,
-            description: description.trim() || undefined,
-            artwork: selectedArtwork,
-            googleDriveUrl: googleDriveUrl.trim(),
-            duration: finalDuration,
-            password: hasPassword && password.trim() ? password.trim() : undefined,
-            expiryOption,
-            customExpiry: expiryOption === "custom" ? customExpiry : undefined,
-          }),
-        });
-
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setStatusMsg("Complete!");
-          onSuccess(data.track, data.link);
-          onClose();
-        } else {
-          setError(data.error || "Failed to create private listening link.");
-        }
+        setError(data.error || data.details || "Failed to create private listening link.");
       }
     } catch {
       setError("Network error while creating track.");
@@ -319,29 +299,30 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
                 accept="image/*"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
-                    setCustomArtworkFile(e.target.files[0]);
+                    handleCustomArtFile(e.target.files[0]);
                   }
                 }}
                 className="hidden"
               />
             </div>
 
-            {customArtworkFile && (
+            {customArtworkName && (
               <p className="text-xs text-champagne font-mono mb-2">
-                Custom artwork selected: {customArtworkFile.name}
+                Custom artwork selected: {customArtworkName}
               </p>
             )}
 
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
               {ARTWORK_PRESETS.map((preset) => {
-                const isSelected = selectedArtwork === preset.id && !customArtworkFile;
+                const isSelected = selectedArtwork === preset.id && !customArtworkDataUrl;
                 return (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => {
                       setSelectedArtwork(preset.id);
-                      setCustomArtworkFile(null);
+                      setCustomArtworkName(null);
+                      setCustomArtworkDataUrl(null);
                     }}
                     className={`relative aspect-square rounded-sm overflow-hidden border transition-all text-left group ${
                       isSelected

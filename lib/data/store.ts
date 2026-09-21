@@ -22,18 +22,20 @@ const TRACKS_FILE = path.join(DATA_DIR, "tracks.json");
 const LINKS_FILE = path.join(DATA_DIR, "links.json");
 
 function ensureDirectories(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch {
+    // Read-only filesystem in serverless environments (e.g. Vercel)
   }
 }
 
 function readJson<T>(filePath: string, fallback: T): T {
-  ensureDirectories();
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(fallback, null, 2), "utf-8");
-    return fallback;
-  }
   try {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
     const raw = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(raw) as T;
   } catch {
@@ -42,15 +44,21 @@ function readJson<T>(filePath: string, fallback: T): T {
 }
 
 function writeJson<T>(filePath: string, data: T): void {
-  ensureDirectories();
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+  try {
+    ensureDirectories();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("Notice: Local storage write skipped (read-only filesystem):", err);
+  }
 }
 
 export class DataStore {
   private static instance: DataStore;
 
   private constructor() {
-    ensureDirectories();
+    if (!this.isUsingSupabase()) {
+      ensureDirectories();
+    }
   }
 
   public static getInstance(): DataStore {

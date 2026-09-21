@@ -1,8 +1,4 @@
-import fs from "fs";
-import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
-import { extractGoogleDriveId } from "@/lib/audio/drive";
 import { isAdminAuthenticated } from "@/lib/auth/session";
 import { DataStore } from "@/lib/data/store";
 
@@ -90,18 +86,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Handle custom uploaded artwork if provided via multipart/form-data
+    // Handle custom uploaded artwork in memory as base64 Data URL (serverless safe, no disk write)
     let finalArtwork = artwork;
     if (customArtworkFile && customArtworkFile.size > 0) {
       const artBuffer = Buffer.from(await customArtworkFile.arrayBuffer());
-      const artExt = path.extname(customArtworkFile.name).toLowerCase() || ".png";
-      const artName = `art-${uuidv4()}${artExt}`;
-      const uploadDir = path.join(process.cwd(), "public", "artwork", "uploads");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      fs.writeFileSync(path.join(uploadDir, artName), artBuffer);
-      finalArtwork = `/artwork/uploads/${artName}`;
+      const mimeType = customArtworkFile.type || "image/jpeg";
+      finalArtwork = `data:${mimeType};base64,${artBuffer.toString("base64")}`;
     }
 
     // Calculate expiration timestamp
@@ -142,8 +132,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Create track error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Failed to create track and private listening link." },
+      { error: "Failed to create track and private listening link.", details: msg },
       { status: 500 }
     );
   }
