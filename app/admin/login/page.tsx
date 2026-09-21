@@ -79,7 +79,6 @@ export default function AdminLoginPage() {
             </label>
             <input
               type="email"
-              value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full bg-surface border border-surface-borderLight rounded-sm px-3.5 py-2.5 text-sm text-text-primary tracking-wide placeholder:text-text-muted focus:outline-none focus:border-champagne/70 transition-colors"
@@ -92,7 +91,6 @@ export default function AdminLoginPage() {
             </label>
             <input
               type="password"
-              value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full bg-surface border border-surface-borderLight rounded-sm px-3.5 py-2.5 text-sm text-text-primary tracking-wide placeholder:text-text-muted focus:outline-none focus:border-champagne/70 transition-colors"
