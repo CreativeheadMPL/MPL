@@ -31,9 +31,23 @@ export async function PATCH(
   }
 
   try {
-    const updates = await req.json();
+    const body = await req.json();
+    const updates: Record<string, unknown> = {};
+
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.artist !== undefined) updates.artist = body.artist;
+    if (body.composer !== undefined) updates.composer = body.composer;
+    if (body.project !== undefined) updates.project = body.project;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.artwork !== undefined) updates.artwork = body.artwork;
+    if (body.audioFile !== undefined) updates.audioFile = body.audioFile;
+    if (body.googleDriveUrl !== undefined) updates.audioFile = body.googleDriveUrl;
+    if (body.duration !== undefined && !isNaN(Number(body.duration))) {
+      updates.duration = Math.round(Number(body.duration));
+    }
+
     const store = DataStore.getInstance();
-    const updated = store.updateTrack(params.id, updates);
+    const updated = await store.updateTrack(params.id, updates);
 
     if (!updated) {
       return NextResponse.json({ error: "Track not found" }, { status: 404 });

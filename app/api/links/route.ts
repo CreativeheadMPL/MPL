@@ -20,11 +20,13 @@ export async function PATCH(req: NextRequest) {
     }
 
     const store = DataStore.getInstance();
-    const updateData: Partial<LinkStatus | any> = { status: status as LinkStatus };
+    const updateData: { status: LinkStatus; expiresAt?: string | null } = {
+      status: status as LinkStatus,
+    };
     if (expiresAt !== undefined) {
       updateData.expiresAt = expiresAt;
     }
-    const updated = store.updateLink(linkId, updateData);
+    const updated = await store.updateLink(linkId, updateData);
 
     if (!updated) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     const store = DataStore.getInstance();
-    const newLink = store.createLink({
+    const newLink = await store.createLink({
       trackId,
       password,
       expiresAt: expiresAt || null,

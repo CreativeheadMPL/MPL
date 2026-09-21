@@ -2,16 +2,16 @@ import fs from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { extractGoogleDriveId } from "@/lib/audio/drive";
 import { isAdminAuthenticated } from "@/lib/auth/session";
 import { DataStore } from "@/lib/data/store";
-import { getAudioStorageProvider } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const store = DataStore.getInstance();
   await store.seedDemoTracks();
-  const tracksWithLinks = store.getTracksWithLinks();
+  const tracksWithLinks = await store.getTracksWithLinks();
   return NextResponse.json(tracksWithLinks);
 }
 
@@ -23,35 +23,75 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData();
-    const title = formData.get("title") as string;
-    const artist = formData.get("artist") as string;
-    const composer = (formData.get("composer") as string) || "";
-    const project = (formData.get("project") as string) || "";
-    const description = (formData.get("description") as string) || "";
-    const artworkPreset = (formData.get("artwork") as string) || "/artwork/default.svg";
-    const customArtworkFile = formData.get("customArtwork") as File | null;
-    const audioFile = formData.get("audio") as File | null;
-    const password = (formData.get("password") as string) || "";
-    const expiryOption = (formData.get("expiryOption") as string) || "never";
-    const customExpiry = formData.get("customExpiry") as string | null;
+    let title = "";
+    let artist = "";
+    let composer = "";
+    let project = "";
+    let description = "";
+    let artwork = "/artwork/default.svg";
+    let audioUrl = "";
+    let duration = 180;
+    let password = "";
+    let expiryOption = "never";
+    let customExpiry: string | null = null;
+    let customArtworkFile: File | null = null;
 
-    if (!title || !artist) {
+    const contentType = req.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      title = body.title || "";
+      artist = body.artist || "";
+      composer = body.composer || "";
+      project = body.project || "";
+      description = body.description || "";
+      artwork = body.artwork || "/artwork/default.svg";
+      audioUrl = body.googleDriveUrl || body.audioUrl || body.audioFile || "";
+      if (body.duration && !isNaN(Number(body.duration))) {
+        duration = Math.round(Number(body.duration));
+      }
+      password = body.password || "";
+      expiryOption = body.expiryOption || "never";
+      customExpiry = body.customExpiry || null;
+    } else {
+      const formData = await req.formData();
+      title = (formData.get("title") as string) || "";
+      artist = (formData.get("artist") as string) || "";
+      composer = (formData.get("composer") as string) || "";
+      project = (formData.get("project") as string) || "";
+      description = (formData.get("description") as string) || "";
+      artwork = (formData.get("artwork") as string) || "/artwork/default.svg";
+      audioUrl =
+        (formData.get("googleDriveUrl") as string) ||
+        (formData.get("audioUrl") as string) ||
+        (formData.get("audioFile") as string) ||
+        "";
+      const durInput = formData.get("duration");
+      if (durInput && !isNaN(Number(durInput))) {
+        duration = Math.round(Number(durInput));
+      }
+      password = (formData.get("password") as string) || "";
+      expiryOption = (formData.get("expiryOption") as string) || "never";
+      customExpiry = formData.get("customExpiry") as string | null;
+      customArtworkFile = formData.get("customArtwork") as File | null;
+    }
+
+    if (!title.trim() || !artist.trim()) {
       return NextResponse.json(
         { error: "Track title and artist are required." },
         { status: 400 }
       );
     }
 
-    if (!audioFile) {
+    if (!audioUrl.trim()) {
       return NextResponse.json(
-        { error: "An audio file (MP3, WAV, M4A, AAC, FLAC) is required." },
+        { error: "A Google Drive audio link or stream URL is required." },
         { status: 400 }
       );
     }
 
-    // Handle artwork: either custom uploaded file or preset SVG
-    let finalArtwork = artworkPreset;
+    // Handle custom uploaded artwork if provided via multipart/form-data
+    let finalArtwork = artwork;
     if (customArtworkFile && customArtworkFile.size > 0) {
       const artBuffer = Buffer.from(await customArtworkFile.arrayBuffer());
       const artExt = path.extname(customArtworkFile.name).toLowerCase() || ".png";
@@ -62,23 +102,6 @@ export async function POST(req: NextRequest) {
       }
       fs.writeFileSync(path.join(uploadDir, artName), artBuffer);
       finalArtwork = `/artwork/uploads/${artName}`;
-    }
-
-    // Upload audio file to AudioStorageProvider (stored in private storage/audio)
-    const audioBytes = await audioFile.arrayBuffer();
-    const audioBuffer = Buffer.from(audioBytes);
-    const storage = getAudioStorageProvider();
-    const uploadedInfo = await storage.upload(
-      audioBuffer,
-      audioFile.name,
-      audioFile.type
-    );
-
-    // Calculate approximate duration based on size or estimate 3 mins (180s)
-    let estimatedDuration = 180;
-    const durationInput = formData.get("duration");
-    if (durationInput && !isNaN(Number(durationInput))) {
-      estimatedDuration = Math.round(Number(durationInput));
     }
 
     // Calculate expiration timestamp
@@ -95,18 +118,18 @@ export async function POST(req: NextRequest) {
     }
 
     const store = DataStore.getInstance();
-    const track = store.createTrack({
+    const track = await store.createTrack({
       title: title.trim(),
       artist: artist.trim(),
       composer: composer.trim() || undefined,
       project: project.trim() || undefined,
       description: description.trim() || undefined,
       artwork: finalArtwork,
-      audioFile: uploadedInfo.key,
-      duration: estimatedDuration,
+      audioFile: audioUrl.trim(),
+      duration: duration || 180,
     });
 
-    const link = store.createLink({
+    const link = await store.createLink({
       trackId: track.id,
       password: password.trim() || undefined,
       expiresAt,
@@ -120,7 +143,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Create track error:", err);
     return NextResponse.json(
-      { error: "Failed to create track and listening link." },
+      { error: "Failed to create track and private listening link." },
       { status: 500 }
     );
   }

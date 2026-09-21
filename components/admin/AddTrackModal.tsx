@@ -2,7 +2,8 @@
 
 import React, { useRef, useState } from "react";
 import Image from "next/image";
-import { X, UploadCloud, FileAudio, Check, Shield, Clock } from "lucide-react";
+import { X, Check, Shield, Clock, Link as LinkIcon, CheckCircle2, AlertCircle } from "lucide-react";
+import { extractGoogleDriveId } from "@/lib/audio/drive";
 import { ListeningLink, Track } from "@/lib/data/types";
 
 interface AddTrackModalProps {
@@ -33,10 +34,9 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
   const [selectedArtwork, setSelectedArtwork] = useState("/artwork/sample-01.svg");
   const [customArtworkFile, setCustomArtworkFile] = useState<File | null>(null);
 
-  // Audio file upload state
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  // Google Drive Audio Link state
+  const [googleDriveUrl, setGoogleDriveUrl] = useState("");
+  const [durationInput, setDurationInput] = useState("3:00");
 
   // Security options
   const [hasPassword, setHasPassword] = useState(false);
@@ -45,42 +45,26 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
   const [customExpiry, setCustomExpiry] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const customArtInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
-  const handleAudioFile = (file: File) => {
-    const validExts = [".mp3", ".wav", ".m4a", ".aac", ".flac"];
-    const ext = "." + file.name.split(".").pop()?.toLowerCase();
-    if (!validExts.includes(ext)) {
-      setError(`Unsupported audio format (${ext}). Supported: MP3, WAV, M4A, AAC, FLAC`);
-      return;
-    }
+  const driveId = extractGoogleDriveId(googleDriveUrl);
+  const isDriveValid = Boolean(driveId);
 
-    setError(null);
-    setAudioFile(file);
-
-    // Calculate audio duration in browser
-    const tempUrl = URL.createObjectURL(file);
-    const tempAudio = new Audio(tempUrl);
-    tempAudio.addEventListener("loadedmetadata", () => {
-      if (tempAudio.duration && !isNaN(tempAudio.duration)) {
-        setAudioDuration(Math.round(tempAudio.duration));
+  const parseDuration = (val: string): number => {
+    const trimmed = val.trim();
+    if (trimmed.includes(":")) {
+      const [m, s] = trimmed.split(":").map(Number);
+      if (!isNaN(m) && !isNaN(s)) {
+        return m * 60 + s;
       }
-      URL.revokeObjectURL(tempUrl);
-    });
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleAudioFile(e.dataTransfer.files[0]);
     }
+    const num = Number(trimmed);
+    return !isNaN(num) && num > 0 ? Math.round(num) : 180;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,63 +73,83 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
       setError("Track Name and Artist are required.");
       return;
     }
-    if (!audioFile) {
-      setError("Please select or drop an audio file.");
+    if (!googleDriveUrl.trim()) {
+      setError("Please paste a Google Drive audio link.");
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
-    setUploadStatus("Uploading audio file securely...");
+    setStatusMsg("Saving sample to database...");
 
     try {
-      const formData = new FormData();
-      formData.append("title", title.trim());
-      formData.append("artist", artist.trim());
-      if (composer.trim()) formData.append("composer", composer.trim());
-      if (project.trim()) formData.append("project", project.trim());
-      if (description.trim()) formData.append("description", description.trim());
-      formData.append("artwork", selectedArtwork);
-      if (customArtworkFile) formData.append("customArtwork", customArtworkFile);
-      formData.append("audio", audioFile);
-      if (audioDuration) formData.append("duration", audioDuration.toString());
-      if (hasPassword && password.trim()) formData.append("password", password.trim());
-      formData.append("expiryOption", expiryOption);
-      if (expiryOption === "custom" && customExpiry) {
-        formData.append("customExpiry", customExpiry);
-      }
+      const finalDuration = parseDuration(durationInput);
 
-      const res = await fetch("/api/tracks", {
-        method: "POST",
-        body: formData,
-      });
+      if (customArtworkFile) {
+        // Use FormData if custom image file is selected
+        const formData = new FormData();
+        formData.append("title", title.trim());
+        formData.append("artist", artist.trim());
+        if (composer.trim()) formData.append("composer", composer.trim());
+        if (project.trim()) formData.append("project", project.trim());
+        if (description.trim()) formData.append("description", description.trim());
+        formData.append("artwork", selectedArtwork);
+        formData.append("customArtwork", customArtworkFile);
+        formData.append("googleDriveUrl", googleDriveUrl.trim());
+        formData.append("duration", finalDuration.toString());
+        if (hasPassword && password.trim()) formData.append("password", password.trim());
+        formData.append("expiryOption", expiryOption);
+        if (expiryOption === "custom" && customExpiry) {
+          formData.append("customExpiry", customExpiry);
+        }
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setUploadStatus("Complete!");
-        onSuccess(data.track, data.link);
-        onClose();
+        const res = await fetch("/api/tracks", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setStatusMsg("Complete!");
+          onSuccess(data.track, data.link);
+          onClose();
+        } else {
+          setError(data.error || "Failed to create private listening link.");
+        }
       } else {
-        setError(data.error || "Failed to create private listening link.");
+        // Standard JSON payload
+        const res = await fetch("/api/tracks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            artist: artist.trim(),
+            composer: composer.trim() || undefined,
+            project: project.trim() || undefined,
+            description: description.trim() || undefined,
+            artwork: selectedArtwork,
+            googleDriveUrl: googleDriveUrl.trim(),
+            duration: finalDuration,
+            password: hasPassword && password.trim() ? password.trim() : undefined,
+            expiryOption,
+            customExpiry: expiryOption === "custom" ? customExpiry : undefined,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setStatusMsg("Complete!");
+          onSuccess(data.track, data.link);
+          onClose();
+        } else {
+          setError(data.error || "Failed to create private listening link.");
+        }
       }
     } catch {
-      setError("Network error while uploading audio.");
+      setError("Network error while creating track.");
     } finally {
       setIsSubmitting(false);
-      setUploadStatus(null);
+      setStatusMsg(null);
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(2)} MB`;
-  };
-
-  const formatDuration = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -171,71 +175,46 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
 
         {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Audio Upload Dropzone (Section 15) */}
-          <div>
-            <label className="block text-[11px] uppercase tracking-widest text-text-secondary mb-2">
-              Audio File <span className="text-champagne">*</span>
-            </label>
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative border border-dashed rounded-sm p-6 text-center cursor-pointer transition-all duration-200 ${
-                isDragging
-                  ? "border-champagne bg-champagne-subtle"
-                  : audioFile
-                  ? "border-surface-borderLight bg-surface-elevated"
-                  : "border-surface-borderLight/60 hover:border-text-muted bg-surface-elevated/40"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".mp3,.wav,.m4a,.aac,.flac,audio/*"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleAudioFile(e.target.files[0]);
-                  }
-                }}
-                className="hidden"
-              />
-
-              {audioFile ? (
-                <div className="flex items-center justify-between text-left">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-surface rounded text-champagne border border-surface-border">
-                      <FileAudio className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary truncate max-w-sm">
-                        {audioFile.name}
-                      </p>
-                      <p className="text-xs text-text-muted font-mono mt-0.5">
-                        {formatFileSize(audioFile.size)}
-                        {audioDuration && ` · ${formatDuration(audioDuration)}`}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-champagne uppercase tracking-wider font-mono">
-                    Change
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  <UploadCloud className="w-8 h-8 text-text-muted mx-auto mb-2" />
-                  <p className="text-xs text-text-primary tracking-wide">
-                    Drag and drop audio file, or click to browse
-                  </p>
-                  <p className="text-[11px] text-text-muted font-mono mt-1">
-                    Accepts MP3, WAV, M4A, AAC, FLAC (Up to 50MB)
-                  </p>
+          {/* Google Drive Link Input */}
+          <div className="bg-surface-elevated/40 border border-surface-borderLight rounded-sm p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center space-x-2 text-[11px] uppercase tracking-widest text-text-secondary font-medium">
+                <LinkIcon className="w-3.5 h-3.5 text-champagne" />
+                <span>Google Drive Audio Link <span className="text-champagne">*</span></span>
+              </label>
+              {googleDriveUrl.trim() && (
+                <div className="flex items-center space-x-1.5 text-[11px] font-mono">
+                  {isDriveValid ? (
+                    <span className="text-emerald-400 flex items-center space-x-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Drive ID: {driveId?.slice(0, 8)}...</span>
+                    </span>
+                  ) : (
+                    <span className="text-amber-400 flex items-center space-x-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>Direct Stream URL</span>
+                    </span>
+                  )}
                 </div>
               )}
             </div>
+
+            <input
+              type="text"
+              value={googleDriveUrl}
+              onChange={(e) => setGoogleDriveUrl(e.target.value)}
+              placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+              required
+              className="w-full bg-surface border border-surface-borderLight rounded-sm px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-champagne transition-colors font-mono"
+            />
+
+            <p className="text-[11px] text-text-muted leading-relaxed">
+              Paste your Google Drive share link.{" "}
+              <span className="text-champagne/90">
+                Ensure general access is set to &ldquo;Anyone with the link can view&rdquo;
+              </span>
+              . Audio will stream seamlessly without exposing the Google Drive URL to listeners.
+            </p>
           </div>
 
           {/* Track Metadata Fields */}
@@ -293,6 +272,19 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
                 className="w-full bg-surface-elevated border border-surface-borderLight rounded-sm px-3.5 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-champagne/70 transition-colors"
               />
             </div>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-text-secondary mb-1.5">
+                Duration (mm:ss or seconds)
+              </label>
+              <input
+                type="text"
+                value={durationInput}
+                onChange={(e) => setDurationInput(e.target.value)}
+                placeholder="3:00 or 180"
+                className="w-full bg-surface-elevated border border-surface-borderLight rounded-sm px-3.5 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-champagne/70 transition-colors font-mono"
+              />
+            </div>
           </div>
 
           <div>
@@ -308,7 +300,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
             />
           </div>
 
-          {/* Artwork Selector (Section 12) */}
+          {/* Artwork Selector */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-[11px] uppercase tracking-widest text-text-secondary">
@@ -378,7 +370,7 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
             </div>
           </div>
 
-          {/* Security & Link Expiration (Section 17, 18) */}
+          {/* Security & Link Expiration */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-surface-borderLight/60">
             {/* Password Protection */}
             <div>
@@ -464,9 +456,9 @@ export const AddTrackModal: React.FC<AddTrackModalProps> = ({
             </p>
           )}
 
-          {uploadStatus && (
+          {statusMsg && (
             <p className="text-xs text-champagne font-mono tracking-wide animate-pulse">
-              {uploadStatus}
+              {statusMsg}
             </p>
           )}
 

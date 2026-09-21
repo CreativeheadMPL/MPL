@@ -2,14 +2,16 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { X, ShieldAlert, RefreshCw, Trash2 } from "lucide-react";
+import { X, ShieldAlert, RefreshCw, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { extractGoogleDriveId } from "@/lib/audio/drive";
 import { ListeningLink, TrackWithLink } from "@/lib/data/types";
 
 interface EditTrackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  trackWithLink: TrackWithLink | null;
+  onTrackUpdated?: () => void;
   onUpdated: () => void;
+  trackWithLink: TrackWithLink | null;
 }
 
 export const EditTrackModal: React.FC<EditTrackModalProps> = ({
@@ -23,6 +25,12 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
   const [composer, setComposer] = useState(trackWithLink?.composer || "");
   const [project, setProject] = useState(trackWithLink?.project || "");
   const [description, setDescription] = useState(trackWithLink?.description || "");
+  const [audioUrl, setAudioUrl] = useState(trackWithLink?.audioFile || "");
+  const [durationInput, setDurationInput] = useState(
+    trackWithLink?.duration
+      ? `${Math.floor(trackWithLink.duration / 60)}:${(trackWithLink.duration % 60).toString().padStart(2, "0")}`
+      : "3:00"
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +38,19 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
 
   const track = trackWithLink;
   const link = trackWithLink.link;
+  const driveId = extractGoogleDriveId(audioUrl);
+
+  const parseDuration = (val: string): number => {
+    const trimmed = val.trim();
+    if (trimmed.includes(":")) {
+      const [m, s] = trimmed.split(":").map(Number);
+      if (!isNaN(m) && !isNaN(s)) {
+        return m * 60 + s;
+      }
+    }
+    const num = Number(trimmed);
+    return !isNaN(num) && num > 0 ? Math.round(num) : 180;
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +67,8 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
           composer: composer.trim() || undefined,
           project: project.trim() || undefined,
           description: description.trim() || undefined,
+          audioFile: audioUrl.trim(),
+          duration: parseDuration(durationInput),
         }),
       });
 
@@ -146,6 +169,29 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
         </div>
 
         <form onSubmit={handleUpdate} className="space-y-4 pt-4">
+          {/* Google Drive Link */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="flex items-center space-x-1.5 text-[11px] uppercase tracking-widest text-text-secondary">
+                <LinkIcon className="w-3.5 h-3.5 text-champagne" />
+                <span>Google Drive Audio Link</span>
+              </label>
+              {driveId && (
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center space-x-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>ID: {driveId.slice(0, 8)}...</span>
+                </span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={audioUrl}
+              onChange={(e) => setAudioUrl(e.target.value)}
+              required
+              className="w-full bg-surface-elevated border border-surface-borderLight rounded-sm px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-champagne font-mono"
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] uppercase tracking-widest text-text-secondary mb-1">
@@ -194,6 +240,18 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
                 className="w-full bg-surface-elevated border border-surface-borderLight rounded-sm px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-champagne"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-text-secondary mb-1">
+                Duration (mm:ss or seconds)
+              </label>
+              <input
+                type="text"
+                value={durationInput}
+                onChange={(e) => setDurationInput(e.target.value)}
+                className="w-full bg-surface-elevated border border-surface-borderLight rounded-sm px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-champagne font-mono"
               />
             </div>
           </div>

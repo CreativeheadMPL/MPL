@@ -16,8 +16,8 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const store = DataStore.getInstance();
   await store.seedDemoTracks();
-  const link = store.getLinkByToken(params.token);
-  const track = link ? store.getTrackById(link.trackId) : null;
+  const link = await store.getLinkByToken(params.token);
+  const track = link ? await store.getTrackById(link.trackId) : null;
 
   const trackTitle = track ? track.title : "Private Audio Preview";
   const artistName = track ? track.artist : "Motion Pulse";
@@ -59,7 +59,7 @@ export default async function ListenerPage({ params }: PageProps) {
   await store.seedDemoTracks();
 
   const accessCookie = cookies().get(`mp_pass_${token}`)?.value;
-  const result = store.verifyLinkAccess(token, accessCookie);
+  const result = await store.verifyLinkAccess(token, accessCookie);
 
   // Link not found
   if (result.reason === "NOT_FOUND") {

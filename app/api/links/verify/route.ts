@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const store = DataStore.getInstance();
-    const result = store.verifyLinkAccess(token, password);
+    const result = await store.verifyLinkAccess(token, password);
 
     if (result.allowed) {
       // Set secure access cookie for this specific token

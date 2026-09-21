@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { Readable } from "stream";
+import { extractGoogleDriveId, getGoogleDriveStreamUrl } from "@/lib/audio/drive";
 import { DataStore } from "@/lib/data/store";
 import { getAudioStorageProvider } from "@/lib/storage";
 
@@ -18,7 +19,7 @@ export async function GET(
 
   // Check link access
   const accessCookie = cookies().get(`mp_pass_${token}`)?.value;
-  const result = store.verifyLinkAccess(token, accessCookie);
+  const result = await store.verifyLinkAccess(token, accessCookie);
 
   if (!result.allowed) {
     if (result.reason === "REVOKED") {
@@ -40,9 +41,75 @@ export async function GET(
   }
 
   const track = result.track!;
-  const storage = getAudioStorageProvider();
+  const audioSource = track.audioFile;
 
-  // Parse HTTP Range header if present
+  // 1. Check if the audio source is a Google Drive link / file ID or external URL
+  const isDrive = extractGoogleDriveId(audioSource) !== null;
+  const isHttp = audioSource.startsWith("http://") || audioSource.startsWith("https://");
+
+  if (isDrive || isHttp) {
+    try {
+      const streamUrl = getGoogleDriveStreamUrl(audioSource);
+      const upstreamHeaders: Record<string, string> = {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      };
+
+      const rangeHeader = req.headers.get("range");
+      if (rangeHeader) {
+        upstreamHeaders["Range"] = rangeHeader;
+      }
+
+      const upstreamRes = await fetch(streamUrl, {
+        headers: upstreamHeaders,
+        redirect: "follow",
+      });
+
+      if (!upstreamRes.ok && upstreamRes.status !== 206) {
+        console.warn(`Upstream audio stream responded with status: ${upstreamRes.status}`);
+      }
+
+      const responseHeaders = new Headers();
+      const upstreamContentType = upstreamRes.headers.get("content-type");
+      responseHeaders.set(
+        "Content-Type",
+        upstreamContentType && !upstreamContentType.includes("text/html")
+          ? upstreamContentType
+          : "audio/mpeg"
+      );
+
+      const upstreamContentLength = upstreamRes.headers.get("content-length");
+      if (upstreamContentLength) {
+        responseHeaders.set("Content-Length", upstreamContentLength);
+      }
+
+      const upstreamContentRange = upstreamRes.headers.get("content-range");
+      if (upstreamContentRange) {
+        responseHeaders.set("Content-Range", upstreamContentRange);
+      }
+
+      responseHeaders.set("Accept-Ranges", "bytes");
+      responseHeaders.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
+      responseHeaders.set("Pragma", "no-cache");
+      responseHeaders.set("Expires", "0");
+      responseHeaders.set("X-Content-Type-Options", "nosniff");
+      responseHeaders.set(
+        "Content-Disposition",
+        `inline; filename="confidential-sample-${token}.mp3"`
+      );
+
+      return new Response(upstreamRes.body, {
+        status: upstreamRes.status,
+        headers: responseHeaders,
+      });
+    } catch (err) {
+      console.error("Google Drive audio streaming error:", err);
+      return new NextResponse("Error streaming audio from cloud source.", { status: 500 });
+    }
+  }
+
+  // 2. Fallback: Local storage provider for legacy uploaded files
+  const storage = getAudioStorageProvider();
   const rangeHeader = req.headers.get("range");
   let range: { start?: number; end?: number } | undefined = undefined;
 
@@ -56,7 +123,6 @@ export async function GET(
   try {
     const streamResult = await storage.getAudioStream(track.audioFile, range);
 
-    // Convert Node.js stream to Web ReadableStream
     const webStream = (Readable.toWeb
       ? Readable.toWeb(streamResult.stream)
       : new ReadableStream({

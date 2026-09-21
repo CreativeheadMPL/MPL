@@ -13,7 +13,12 @@ export default async function AdminPage() {
 
   const store = DataStore.getInstance();
   await store.seedDemoTracks();
-  const tracksWithLinks = store.getTracksWithLinks();
+  const tracksWithLinks = await store.getTracksWithLinks();
 
-  return <AdminDashboard initialTracks={tracksWithLinks} />;
+  return (
+    <AdminDashboard
+      initialTracks={tracksWithLinks}
+      isUsingSupabase={store.isUsingSupabase()}
+    />
+  );
 }
