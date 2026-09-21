@@ -1,0 +1,27 @@
+<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="redGlow" cx="45%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#4A0B12" />
+      <stop offset="45%" stop-color="#240508" />
+      <stop offset="100%" stop-color="#080808" />
+    </radialGradient>
+    <linearGradient id="redBeam" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E22639" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#600B14" stop-opacity="0.1" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#redGlow)" />
+  <rect x="24" y="24" width="752" height="752" stroke="#2D1115" stroke-width="1" />
+
+  <!-- Crimson Pulse Eclipse -->
+  <circle cx="400" cy="400" r="190" stroke="url(#redBeam)" stroke-width="1.5" />
+  <circle cx="390" cy="390" r="140" fill="#0C0305" stroke="#E22639" stroke-width="1" stroke-opacity="0.5" />
+  <circle cx="360" cy="360" r="40" fill="#E22639" fill-opacity="0.15" />
+  <line x1="160" y1="400" x2="640" y2="400" stroke="#E22639" stroke-width="0.75" stroke-opacity="0.4" />
+  <circle cx="480" cy="400" r="3" fill="#D4C5A5" />
+
+  <!-- Typography -->
+  <text x="60" y="70" fill="#F5F3EE" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="12" font-weight="700" letter-spacing="0.3em">SAMPLE 02</text>
+  <text x="60" y="92" fill="#E22639" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="500" letter-spacing="0.2em">CRIMSON PULSE</text>
+  <text x="740" y="740" text-anchor="end" fill="#7A2229" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="500" letter-spacing="0.25em">MOTION PULSE INDIA</text>
+</svg>

@@ -1,0 +1,28 @@
+<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="slateGlow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#1E1E1F" />
+      <stop offset="100%" stop-color="#090909" />
+    </radialGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#slateGlow)" />
+  <rect x="24" y="24" width="752" height="752" stroke="#222224" stroke-width="1" />
+
+  <!-- Acoustic Monolith -->
+  <rect x="320" y="200" width="160" height="400" fill="#131315" stroke="#38383B" stroke-width="1" />
+  
+  <!-- Subtle acoustic horizontal slats -->
+  <line x1="330" y1="260" x2="470" y2="260" stroke="#252528" stroke-width="1" />
+  <line x1="330" y1="320" x2="470" y2="320" stroke="#252528" stroke-width="1" />
+  <line x1="330" y1="380" x2="470" y2="380" stroke="#252528" stroke-width="1" />
+  <line x1="330" y1="440" x2="470" y2="440" stroke="#D4C5A5" stroke-width="1.5" />
+  <line x1="330" y1="500" x2="470" y2="500" stroke="#252528" stroke-width="1" />
+  <line x1="330" y1="560" x2="470" y2="560" stroke="#252528" stroke-width="1" />
+
+  <circle cx="400" cy="440" r="4" fill="#D4C5A5" />
+
+  <!-- Typography -->
+  <text x="60" y="70" fill="#F5F3EE" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="12" font-weight="700" letter-spacing="0.3em">SAMPLE 05</text>
+  <text x="60" y="92" fill="#88888D" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="500" letter-spacing="0.2em">ACOUSTIC MONOLITH</text>
+  <text x="740" y="740" text-anchor="end" fill="#505055" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="500" letter-spacing="0.25em">MOTION PULSE INDIA</text>
+</svg>

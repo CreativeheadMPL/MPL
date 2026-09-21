@@ -1,0 +1,49 @@
+[
+  {
+    "id": "92d3ed10-633b-4822-bc80-3e0ceb69154a",
+    "createdAt": "2026-09-21T09:04:08.416Z",
+    "title": "Monsoon Prelude",
+    "artist": "Motion Pulse Sound Labs",
+    "composer": "A. R. Rahman & MP",
+    "project": "Confidential Cinema 2026",
+    "artwork": "/artwork/sample-03.svg",
+    "audioFile": "18e7b882-e948-435a-a363-ab7d043f2586.wav",
+    "duration": 180
+  },
+  {
+    "id": "5ee38265-6a06-403e-935f-8df650cdbaea",
+    "createdAt": "2026-09-21T08:48:06.976Z",
+    "title": "Horizon Echoes",
+    "artist": "Cinematic Suite",
+    "composer": "Motion Pulse Collective",
+    "project": "Confidential Film Score",
+    "description": "Atmospheric pulse and tension build for trailer placement.",
+    "artwork": "/artwork/sample-04.svg",
+    "audioFile": "69b20337-4814-4424-afaf-9d907696e860.wav",
+    "duration": 60
+  },
+  {
+    "id": "8925cf47-ac5a-4574-8664-890c02f549f5",
+    "createdAt": "2026-09-21T08:48:05.683Z",
+    "title": "Tere Bina",
+    "artist": "Arijit Demo",
+    "composer": "Pritam & Motion Pulse",
+    "project": "Motion Pulse India",
+    "description": "Exclusive acoustic vocal preview for Bollywood feature film pitch.",
+    "artwork": "/artwork/sample-02.svg",
+    "audioFile": "cd8ea2c7-42e5-4887-82bb-0a60aedf70c5.wav",
+    "duration": 54
+  },
+  {
+    "id": "87a56b59-0667-48eb-8684-9ebb44b95023",
+    "createdAt": "2026-09-21T08:48:04.597Z",
+    "title": "After Midnight",
+    "artist": "Demo Artist",
+    "composer": "Motion Pulse Studio",
+    "project": "Motion Pulse Demo",
+    "description": "Confidential late-night ambient chord exploration for upcoming score.",
+    "artwork": "/artwork/sample-01.svg",
+    "audioFile": "30f10e3f-5c08-45aa-a8bc-640c7858c7e3.wav",
+    "duration": 48
+  }
+]

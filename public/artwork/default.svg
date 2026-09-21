@@ -1,0 +1,39 @@
+<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1A1A1A" />
+      <stop offset="100%" stop-color="#080808" />
+    </radialGradient>
+    <linearGradient id="goldLine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4C5A5" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#8C7E60" stop-opacity="0.3" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="800" height="800" fill="url(#bgGlow)" />
+  <rect x="20" y="20" width="760" height="760" stroke="#1F1F1F" stroke-width="1" />
+
+  <!-- Concentric Vinyl/Disc Grooves -->
+  <circle cx="400" cy="400" r="320" stroke="#141414" stroke-width="1.5" />
+  <circle cx="400" cy="400" r="280" stroke="#181818" stroke-width="1" stroke-dasharray="8 4" />
+  <circle cx="400" cy="400" r="240" stroke="#1C1C1C" stroke-width="1.5" />
+  <circle cx="400" cy="400" r="200" stroke="#222222" stroke-width="1" />
+  <circle cx="400" cy="400" r="160" stroke="#2A2A2A" stroke-width="1.5" />
+  
+  <!-- Subtle center record core -->
+  <circle cx="400" cy="400" r="110" fill="#0D0D0D" stroke="#D4C5A5" stroke-width="1" stroke-opacity="0.4" />
+  <circle cx="400" cy="400" r="14" fill="#080808" stroke="#D4C5A5" stroke-width="1.5" />
+
+  <!-- Geometric accent line -->
+  <line x1="400" y1="40" x2="400" y2="760" stroke="url(#goldLine)" stroke-width="0.75" stroke-opacity="0.3" />
+  <line x1="40" y1="400" x2="760" y2="400" stroke="#1A1A1A" stroke-width="0.75" />
+
+  <!-- Editorial Typography -->
+  <text x="60" y="70" fill="#F5F3EE" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="14" font-weight="700" letter-spacing="0.25em">MOTION PULSE</text>
+  <text x="60" y="90" fill="#777570" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="500" letter-spacing="0.2em">ARCHIVE MASTER // REF. 00</text>
+
+  <text x="740" y="70" text-anchor="end" fill="#D4C5A5" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="11" font-weight="600" letter-spacing="0.2em">CONFIDENTIAL</text>
+
+  <text x="60" y="740" fill="#B5B3AE" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="13" font-weight="600" letter-spacing="0.15em">SAMPLE SPACE</text>
+  <text x="740" y="740" text-anchor="end" fill="#555450" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="10" font-weight="400" letter-spacing="0.1em">48kHz / 24-BIT PREVIEW</text>
+</svg>
