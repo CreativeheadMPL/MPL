@@ -20,12 +20,17 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
   token,
   seed = "motion-pulse",
   initialDuration = 180,
+  onTrackEnd,
   onPreviousTrack,
   onNextTrack,
   hasPrevious = false,
   hasNext = false,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const volumeContainerRef = useRef<HTMLDivElement | null>(null);
+  const sliderRef = useRef<HTMLInputElement | null>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(initialDuration);
@@ -57,6 +62,7 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
+      if (onTrackEnd) onTrackEnd();
     };
 
     const handleError = () => {
@@ -75,7 +81,7 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-  }, []);
+  }, [onTrackEnd]);
 
   // Keyboard controls (Space = Play/Pause, ArrowLeft/Right = seek 5s, M = mute)
   useEffect(() => {
@@ -103,6 +109,51 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlaying, isMuted, volume]);
+
+  // Debounced volume popover hover handlers to prevent slider from vanishing
+  const handleVolumeMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setShowVolumeSlider(true);
+  };
+
+  const handleVolumeMouseLeave = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    closeTimeoutRef.current = setTimeout(() => {
+      setShowVolumeSlider(false);
+    }, 350);
+  };
+
+  // Close timeout cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Click outside volume popover to dismiss
+  useEffect(() => {
+    if (!showVolumeSlider) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (volumeContainerRef.current && !volumeContainerRef.current.contains(e.target as Node)) {
+        setShowVolumeSlider(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showVolumeSlider]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -152,11 +203,16 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
     if (isMuted) {
       audio.muted = false;
       setIsMuted(false);
-      audio.volume = volume || 0.8;
+      audio.volume = volume || 0.85;
     } else {
       audio.muted = true;
       setIsMuted(true);
     }
+  };
+
+  const handleVolumeButtonClick = () => {
+    toggleMute();
+    setShowVolumeSlider(true);
   };
 
   return (
@@ -169,7 +225,6 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
         ref={audioRef}
         src={audioSourceUrl}
         preload="metadata"
-        // Prevent browser default download options
         controlsList="nodownload noplaybackrate"
       />
 
@@ -194,71 +249,103 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
         <TimeDisplay currentTime={currentTime} duration={duration} />
       </div>
 
-      {/* Primary Player Controls */}
-      <div className="flex items-center justify-between px-2">
-        {/* Previous Track / Rewind */}
-        <button
-          onClick={hasPrevious && onPreviousTrack ? onPreviousTrack : () => seekBy(-10)}
-          title={hasPrevious ? "Previous Track" : "Rewind 10 seconds"}
-          className="text-text-muted hover:text-text-primary transition-colors duration-200 p-2 focus:outline-none"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
-
-        {/* Center: Hero Play/Pause Toggle */}
-        <button
-          onClick={togglePlay}
-          title={isPlaying ? "Pause (Space)" : "Play (Space)"}
-          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-surface-elevated border border-surface-border hover:border-champagne/50 hover:bg-[#1C1C1C] transition-all duration-300 group focus:outline-none shadow-lg"
-        >
-          {isPlaying ? (
-            <Pause className="w-5 h-5 text-champagne fill-champagne transition-transform group-hover:scale-105" />
-          ) : (
-            <Play className="w-5 h-5 text-champagne fill-champagne ml-0.5 transition-transform group-hover:scale-105" />
+      {/* Primary Player Controls: Mathematically Centered & Symmetrical */}
+      <div className="relative flex items-center justify-center px-2 py-1">
+        {/* Left balance placeholder */}
+        <div className="absolute left-0 flex items-center">
+          {hasPrevious && onPreviousTrack && (
+            <button
+              onClick={onPreviousTrack}
+              title="Previous Track"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-text-muted hover:text-text-primary hover:bg-surface-elevated/70 transition-all focus:outline-none"
+            >
+              <RotateCcw className="w-4.5 h-4.5" />
+            </button>
           )}
-        </button>
+        </div>
 
-        {/* Next Track / Forward */}
-        <button
-          onClick={hasNext && onNextTrack ? onNextTrack : () => seekBy(10)}
-          title={hasNext ? "Next Track" : "Forward 10 seconds"}
-          className="text-text-muted hover:text-text-primary transition-colors duration-200 p-2 focus:outline-none"
-        >
-          <RotateCw className="w-4 h-4" />
-        </button>
-
-        {/* Volume & Mute Scrub */}
-        <div
-          className="relative flex items-center"
-          onMouseEnter={() => setShowVolumeSlider(true)}
-          onMouseLeave={() => setShowVolumeSlider(false)}
-        >
+        {/* Central Playback Cluster: Rewind - Hero Play/Pause - Forward */}
+        <div className="flex items-center space-x-6 sm:space-x-8">
+          {/* Rewind 10 seconds */}
           <button
-            onClick={toggleMute}
-            title={isMuted ? "Unmute (M)" : "Mute (M)"}
-            className="text-text-muted hover:text-text-primary transition-colors duration-200 p-2 focus:outline-none"
+            onClick={() => seekBy(-10)}
+            title="Rewind 10 seconds (←)"
+            aria-label="Rewind 10 seconds"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-text-muted hover:text-text-primary hover:bg-surface-elevated/80 transition-all duration-200 focus:outline-none"
           >
-            {isMuted || volume === 0 ? (
-              <VolumeX className="w-4 h-4" />
+            <RotateCcw className="w-5 h-5" />
+          </button>
+
+          {/* Central Hero Play / Pause Button */}
+          <button
+            onClick={togglePlay}
+            title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            className="relative flex items-center justify-center w-14 h-14 rounded-full bg-surface-elevated border border-surface-border hover:border-champagne/60 hover:bg-[#1C1C1C] transition-all duration-200 group focus:outline-none shadow-xl"
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5 text-champagne fill-champagne transition-transform group-hover:scale-105" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Play className="w-5 h-5 text-champagne fill-champagne ml-0.5 transition-transform group-hover:scale-105" />
             )}
           </button>
 
-          {/* Minimal popup/horizontal volume slider */}
+          {/* Forward 10 seconds */}
+          <button
+            onClick={() => seekBy(10)}
+            title="Forward 10 seconds (→)"
+            aria-label="Forward 10 seconds"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-text-muted hover:text-text-primary hover:bg-surface-elevated/80 transition-all duration-200 focus:outline-none"
+          >
+            <RotateCw className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Right Anchored: Volume Control with Continuous Hover Bridge */}
+        <div
+          ref={volumeContainerRef}
+          className="absolute right-0 flex items-center"
+          onMouseEnter={handleVolumeMouseEnter}
+          onMouseLeave={handleVolumeMouseLeave}
+        >
+          {/* Volume Slider Popover with safe hover bridge to prevent vanishing */}
           {showVolumeSlider && (
-            <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 flex items-center bg-surface-elevated border border-surface-border rounded-full px-3 py-1.5 shadow-xl animate-fadeIn">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.02"
-                value={isMuted ? 0 : volume}
-                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="w-16 h-1 bg-surface-border rounded-lg appearance-none cursor-pointer accent-champagne"
-              />
+            <div
+              className="absolute right-full pr-2.5 top-1/2 -translate-y-1/2 flex items-center z-30 animate-fadeIn"
+              onMouseEnter={handleVolumeMouseEnter}
+              onMouseLeave={handleVolumeMouseLeave}
+            >
+              <div className="flex items-center space-x-2 bg-surface-elevated border border-surface-borderLight rounded-full px-3 py-1.5 shadow-2xl backdrop-blur-md">
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.02"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="w-20 h-1 bg-surface-border rounded-lg appearance-none cursor-pointer accent-champagne focus:outline-none"
+                />
+                <span className="text-[10px] font-mono text-champagne w-6 text-right select-none tabular-nums">
+                  {Math.round((isMuted ? 0 : volume) * 100)}%
+                </span>
+              </div>
             </div>
           )}
+
+          {/* Volume Button */}
+          <button
+            onClick={handleVolumeButtonClick}
+            title={isMuted ? "Unmute (M)" : "Mute (M)"}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            className="w-11 h-11 flex items-center justify-center rounded-full text-text-muted hover:text-text-primary hover:bg-surface-elevated/80 transition-all duration-200 focus:outline-none"
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="w-5 h-5 text-champagne" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
+            )}
+          </button>
         </div>
       </div>
     </div>
