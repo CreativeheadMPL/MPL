@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { X, ShieldAlert, RefreshCw, Link as LinkIcon, CheckCircle2 } from "lucide-react";
+import { X, ShieldAlert, RefreshCw, Link as LinkIcon, CheckCircle2, Copy, Check } from "lucide-react";
 import { extractGoogleDriveId } from "@/lib/audio/drive";
 import { ListeningLink, TrackWithLink } from "@/lib/data/types";
 
@@ -33,6 +33,35 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
+
+  // Synchronize form fields whenever a track is selected or modal opens
+  useEffect(() => {
+    if (trackWithLink) {
+      setTitle(trackWithLink.title || "");
+      setArtist(trackWithLink.artist || "");
+      setComposer(trackWithLink.composer || "");
+      setProject(trackWithLink.project || "");
+      setDescription(trackWithLink.description || "");
+      setAudioUrl(trackWithLink.audioFile || "");
+      setDurationInput(
+        trackWithLink.duration
+          ? `${Math.floor(trackWithLink.duration / 60)}:${(trackWithLink.duration % 60).toString().padStart(2, "0")}`
+          : "3:00"
+      );
+      setError(null);
+      setCopiedToken(false);
+    }
+  }, [trackWithLink, isOpen]);
+
+  const handleCopyToken = async () => {
+    if (!trackWithLink?.link?.token) return;
+    try {
+      await navigator.clipboard.writeText(trackWithLink.link.token);
+      setCopiedToken(true);
+      setTimeout(() => setCopiedToken(false), 2000);
+    } catch {}
+  };
 
   if (!isOpen || !trackWithLink) return null;
 
@@ -272,9 +301,29 @@ export const EditTrackModal: React.FC<EditTrackModalProps> = ({
           {link && (
             <div className="p-3 bg-surface-elevated border border-surface-borderLight rounded-sm space-y-3 pt-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary uppercase font-mono tracking-wider">
-                  Link Token: <strong className="text-champagne">{link.token}</strong>
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-text-secondary uppercase font-mono tracking-wider">
+                    Link Token: <strong className="text-champagne font-mono">{link.token}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyToken}
+                    className="flex items-center space-x-1 px-2 py-0.5 bg-surface border border-surface-border hover:border-champagne/60 text-text-muted hover:text-champagne text-[10px] font-mono tracking-wider rounded transition-colors"
+                    title="Copy token to clipboard"
+                  >
+                    {copiedToken ? (
+                      <>
+                        <Check className="w-3 h-3 text-champagne stroke-[2.5]" />
+                        <span className="text-champagne font-semibold">COPIED</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>COPY</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-mono tracking-widest ${
                     link.status === "ACTIVE"

@@ -308,31 +308,6 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
           onMouseEnter={handleVolumeMouseEnter}
           onMouseLeave={handleVolumeMouseLeave}
         >
-          {/* Volume Slider Popover with safe hover bridge to prevent vanishing */}
-          {showVolumeSlider && (
-            <div
-              className="absolute right-full pr-2.5 top-1/2 -translate-y-1/2 flex items-center z-30 animate-fadeIn"
-              onMouseEnter={handleVolumeMouseEnter}
-              onMouseLeave={handleVolumeMouseLeave}
-            >
-              <div className="flex items-center space-x-2 bg-surface-elevated border border-surface-borderLight rounded-full px-3 py-1.5 shadow-2xl backdrop-blur-md">
-                <input
-                  ref={sliderRef}
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.02"
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  className="w-20 h-1 bg-surface-border rounded-lg appearance-none cursor-pointer accent-champagne focus:outline-none"
-                />
-                <span className="text-[10px] font-mono text-champagne w-6 text-right select-none tabular-nums">
-                  {Math.round((isMuted ? 0 : volume) * 100)}%
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Volume Button */}
           <button
             onClick={handleVolumeButtonClick}
@@ -346,6 +321,31 @@ export const CustomAudioPlayer: React.FC<CustomAudioPlayerProps> = ({
               <Volume2 className="w-5 h-5" />
             )}
           </button>
+
+          {/* Volume Slider Popover in front of volume icon with safe hover bridge */}
+          {showVolumeSlider && (
+            <div
+              className="absolute left-full pl-2.5 top-1/2 -translate-y-1/2 flex items-center z-30"
+              onMouseEnter={handleVolumeMouseEnter}
+              onMouseLeave={handleVolumeMouseLeave}
+            >
+              <div className="flex items-center space-x-2 bg-surface-elevated border border-surface-borderLight rounded-full px-3 py-1.5 shadow-2xl backdrop-blur-md animate-fadeIn">
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.02"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="w-16 sm:w-20 h-1 bg-surface-border rounded-lg appearance-none cursor-pointer accent-champagne focus:outline-none"
+                />
+                <span className="text-[10px] font-mono text-champagne w-6 text-right select-none tabular-nums">
+                  {Math.round((isMuted ? 0 : volume) * 100)}%
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

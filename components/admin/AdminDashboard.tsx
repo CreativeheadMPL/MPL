@@ -40,6 +40,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     link: ListeningLink;
   } | null>(null);
 
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -60,6 +61,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const fullUrl = `${origin}/listen/${token}`;
     try {
       await navigator.clipboard.writeText(fullUrl);
+      setCopiedLink(token);
+      setTimeout(() => setCopiedLink(null), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleCopyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token);
       setCopiedToken(token);
       setTimeout(() => setCopiedToken(null), 2000);
     } catch {
@@ -294,6 +305,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </p>
 
                       <div className="flex items-center space-x-2 mt-1 text-[11px] text-text-muted font-mono">
+                        {link && (
+                          <>
+                            <span className="text-champagne font-semibold tracking-wider">
+                              {link.token}
+                            </span>
+                            <span>·</span>
+                          </>
+                        )}
                         {track.project && (
                           <span className="text-champagne/80">{track.project}</span>
                         )}
@@ -334,6 +353,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </span>
                     )}
 
+                    {/* Copy Token Button */}
+                    {link && (
+                      <button
+                        onClick={() => handleCopyToken(link.token)}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 bg-surface-elevated hover:bg-[#1C1C1C] border border-surface-border text-text-secondary hover:text-champagne text-xs font-mono tracking-wider rounded-sm transition-colors"
+                        title={`Copy token: ${link.token}`}
+                      >
+                        {copiedToken === link.token ? (
+                          <>
+                            <Check className="w-3 h-3 text-champagne stroke-[2.5]" />
+                            <span className="text-champagne font-semibold">COPIED</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>COPY TOKEN</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     {/* Copy Link Button */}
                     {link && (
                       <button
@@ -341,10 +381,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         className="flex items-center space-x-1.5 px-3 py-1.5 bg-surface-elevated hover:bg-[#1C1C1C] border border-surface-border text-text-secondary hover:text-champagne text-xs font-mono tracking-wider rounded-sm transition-colors"
                         title="Copy private listening URL"
                       >
-                        {copiedToken === link.token ? (
+                        {copiedLink === link.token ? (
                           <>
                             <Check className="w-3 h-3 text-champagne stroke-[2.5]" />
-                            <span className="text-champagne">COPIED</span>
+                            <span className="text-champagne font-semibold">COPIED LINK</span>
                           </>
                         ) : (
                           <>
@@ -426,12 +466,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       />
 
       {/* Edit Track Modal */}
-      <EditTrackModal
-        isOpen={Boolean(editingTrack)}
-        onClose={() => setEditingTrack(null)}
-        trackWithLink={editingTrack}
-        onUpdated={refreshTracks}
-      />
+      {editingTrack && (
+        <EditTrackModal
+          key={editingTrack.id}
+          isOpen={true}
+          onClose={() => setEditingTrack(null)}
+          trackWithLink={editingTrack}
+          onUpdated={refreshTracks}
+        />
+      )}
 
       {/* Share Link Modal (Triggered on track creation) */}
       <ShareLinkModal
