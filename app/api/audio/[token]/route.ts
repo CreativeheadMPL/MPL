@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { Readable } from "stream";
-import { extractGoogleDriveId, getGoogleDriveStreamUrl } from "@/lib/audio/drive";
+import { extractGoogleDriveId, fetchGoogleDriveAudioStream } from "@/lib/audio/drive";
 import { DataStore } from "@/lib/data/store";
 import { getAudioStorageProvider } from "@/lib/storage";
 
@@ -49,34 +49,31 @@ export async function GET(
 
   if (isDrive || isHttp) {
     try {
-      const streamUrl = getGoogleDriveStreamUrl(audioSource);
-      const upstreamHeaders: Record<string, string> = {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      };
-
       const rangeHeader = req.headers.get("range");
-      if (rangeHeader) {
-        upstreamHeaders["Range"] = rangeHeader;
-      }
+      const upstreamRes = await fetchGoogleDriveAudioStream(audioSource, rangeHeader);
 
-      const upstreamRes = await fetch(streamUrl, {
-        headers: upstreamHeaders,
-        redirect: "follow",
-      });
+      const upstreamContentType = upstreamRes.headers.get("content-type") || "";
+
+      // If upstream still returned HTML, file is either private or unavailable
+      if (upstreamContentType.includes("text/html")) {
+        console.error(
+          "Google Drive returned HTML instead of audio stream. Link may be private or invalid:",
+          audioSource
+        );
+        return new NextResponse(
+          "Audio preview unavailable: Google Drive file is not accessible or sharing is not set to 'Anyone with the link can view'.",
+          { status: 404 }
+        );
+      }
 
       if (!upstreamRes.ok && upstreamRes.status !== 206) {
         console.warn(`Upstream audio stream responded with status: ${upstreamRes.status}`);
       }
 
       const responseHeaders = new Headers();
-      const upstreamContentType = upstreamRes.headers.get("content-type");
-      responseHeaders.set(
-        "Content-Type",
-        upstreamContentType && !upstreamContentType.includes("text/html")
-          ? upstreamContentType
-          : "audio/mpeg"
-      );
+
+      // Preserve exact audio content-type (e.g. audio/wav, audio/mpeg, etc.)
+      responseHeaders.set("Content-Type", upstreamContentType || "audio/mpeg");
 
       const upstreamContentLength = upstreamRes.headers.get("content-length");
       if (upstreamContentLength) {
@@ -93,9 +90,17 @@ export async function GET(
       responseHeaders.set("Pragma", "no-cache");
       responseHeaders.set("Expires", "0");
       responseHeaders.set("X-Content-Type-Options", "nosniff");
+
+      let ext = "mp3";
+      if (upstreamContentType.includes("wav")) ext = "wav";
+      else if (upstreamContentType.includes("mp4") || upstreamContentType.includes("m4a")) ext = "m4a";
+      else if (upstreamContentType.includes("flac")) ext = "flac";
+      else if (upstreamContentType.includes("aac")) ext = "aac";
+      else if (upstreamContentType.includes("ogg")) ext = "ogg";
+
       responseHeaders.set(
         "Content-Disposition",
-        `inline; filename="confidential-sample-${token}.mp3"`
+        `inline; filename="confidential-sample-${token}.${ext}"`
       );
 
       return new Response(upstreamRes.body, {
