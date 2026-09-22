@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const store = DataStore.getInstance();
-  await store.seedDemoTracks();
   const tracksWithLinks = await store.getTracksWithLinks();
   return NextResponse.json(tracksWithLinks);
 }

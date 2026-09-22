@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const store = DataStore.getInstance();
-  await store.seedDemoTracks();
   const link = await store.getLinkByToken(params.token);
   const track = link ? await store.getTrackById(link.trackId) : null;
 
@@ -56,7 +55,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ListenerPage({ params }: PageProps) {
   const token = params.token;
   const store = DataStore.getInstance();
-  await store.seedDemoTracks();
 
   const accessCookie = cookies().get(`mp_pass_${token}`)?.value;
   const result = await store.verifyLinkAccess(token, accessCookie);

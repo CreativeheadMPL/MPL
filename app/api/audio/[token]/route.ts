@@ -14,9 +14,6 @@ export async function GET(
   const token = params.token;
   const store = DataStore.getInstance();
 
-  // Ensure demo seed runs if store is empty
-  await store.seedDemoTracks();
-
   // Check link access
   const accessCookie = cookies().get(`mp_pass_${token}`)?.value;
   const result = await store.verifyLinkAccess(token, accessCookie);

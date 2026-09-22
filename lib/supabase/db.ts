@@ -193,6 +193,9 @@ export async function deleteTrackFromSupabase(id: string): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;
 
+  // Delete associated links first to satisfy foreign key constraints
+  await sb.from("links").delete().eq("track_id", id);
+
   const { error } = await sb.from("tracks").delete().eq("id", id);
   if (error) {
     console.error("Supabase deleteTrack error:", error);

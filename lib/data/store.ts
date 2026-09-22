@@ -307,61 +307,10 @@ export class DataStore {
     return { allowed: true, track, link };
   }
 
-  // --- Demo Seeding ---
+  // --- Demo Seeding (Disabled to preserve user deletions) ---
 
   async seedDemoTracks(): Promise<void> {
-    const tracks = await this.getTracks();
-    if (tracks.length > 0) return;
-
-    console.log("Seeding Motion Pulse demo tracks with Google Drive links...");
-
-    // Track 1: After Midnight
-    const track1 = await this.createTrack({
-      title: "After Midnight",
-      artist: "Demo Artist",
-      composer: "Motion Pulse Studio",
-      project: "Motion Pulse Demo",
-      description: "Confidential late-night ambient chord exploration for upcoming score.",
-      artwork: "/artwork/sample-01.svg",
-      audioFile: "https://drive.google.com/file/d/1_DEMO_AFTER_MIDNIGHT/view?usp=sharing",
-      duration: 180,
-    });
-    await this.createLink({
-      trackId: track1.id,
-      expiresAt: null,
-    });
-
-    // Track 2: Tere Bina
-    const track2 = await this.createTrack({
-      title: "Tere Bina",
-      artist: "Arijit Demo",
-      composer: "Pritam & Motion Pulse",
-      project: "Motion Pulse India",
-      description: "Exclusive acoustic vocal preview for Bollywood feature film pitch.",
-      artwork: "/artwork/sample-02.svg",
-      audioFile: "https://drive.google.com/file/d/1_DEMO_TERE_BINA/view?usp=sharing",
-      duration: 210,
-    });
-    await this.createLink({
-      trackId: track2.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-    });
-
-    // Track 3: Horizon Echoes
-    const track3 = await this.createTrack({
-      title: "Horizon Echoes",
-      artist: "Cinematic Suite",
-      composer: "Motion Pulse Collective",
-      project: "Confidential Film Score",
-      description: "Atmospheric pulse and tension build for trailer placement.",
-      artwork: "/artwork/sample-04.svg",
-      audioFile: "https://drive.google.com/file/d/1_DEMO_HORIZON_ECHOES/view?usp=sharing",
-      duration: 165,
-    });
-    await this.createLink({
-      trackId: track3.id,
-      password: "demo",
-      expiresAt: null,
-    });
+    // Disabled: Do not auto-seed demo tracks so users can delete all tracks and have an empty archive
+    return;
   }
 }

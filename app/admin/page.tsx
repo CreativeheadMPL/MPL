@@ -12,7 +12,6 @@ export default async function AdminPage() {
   }
 
   const store = DataStore.getInstance();
-  await store.seedDemoTracks();
   const tracksWithLinks = await store.getTracksWithLinks();
 
   return (
